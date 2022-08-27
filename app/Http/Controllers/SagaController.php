@@ -47,9 +47,9 @@ class SagaController extends Controller
         $listKills = [];
         if(!empty($listAge) && !empty($listYear)) {
             foreach ($listAge as $key => $value) {
-                $year = isset($listYear[$key]) ? $listYear[$key] : 0;
-                $age = isset($listAge[$key]) ? $listAge[$key] : 0;
-                $kill = $year - $age;
+                $year = $this->getYear($request, $key);
+                $age = $this->getAge($request, $key);
+                $kill = ($age <= 0 || !is_numeric($age) || $year <= 0 || !is_numeric($year)) ? -1 : $year - $age;
                 $listKills[] = $kill;
             }
         }
@@ -59,9 +59,6 @@ class SagaController extends Controller
     private function getResponses($request)
     {
         $listPerson = $request->input('person_name');
-        $listAge = $request->input('age_of_death');
-        $listYear = $request->input('year_of_death');
-
         $results = $listCountKilled = [];
         $totalKilled = 0;
         $responses = [
@@ -74,24 +71,23 @@ class SagaController extends Controller
         
         if(!empty($listKills)) {
             foreach ($listKills as $key => $value) {
-                if(isset($listAngka[$value])) {
-                    $person = isset($listPerson[$key]) ? $listPerson[$key] : 'Anonymous ' . $key+1;
-                    $age = isset($listAge[$key]) ? $listAge[$key] : 0;
-                    $year = isset($listYear[$key]) ? $listYear[$key] : 0;
-                    $selisih = $year - $age;
-                    $killed = $listAngka[$value+$key];
-                    $listCountKilled[] = $killed;
-                    $totalKilled += $killed;
-                    $results[] = [
-                        'person' => $person,
-                        'age' => $age,
-                        'year' => $year,
-                        'selisih' => $selisih,
-                        'killed' => $killed
-                    ];
-                }
+                $keys = $value+$key;
+                $person = isset($listPerson[$key]) ? $listPerson[$key] : 'Anonymous ' . $key+1;
+                $killed = isset($listAngka[$keys]) ? $listAngka[$keys] : -1;
+                $year = $this->getYear($request, $key);
+                $age = $this->getAge($request, $key);
+                $killed = ($age <= 0 || !is_numeric($age) || $year <= 0 || !is_numeric($year)) ? -1 : $killed;
+                $selisih = $year - $age;
+                $listCountKilled[] = $killed;
+                $totalKilled += $killed;
+                $results[] = [
+                    'person' => $person,
+                    'age' => $age,
+                    'year' => $year,
+                    'selisih' => $selisih,
+                    'killed' => $killed
+                ];
             }
-
             $output = implode(' + ', array_map(
                 function ($v, $k) { 
                     return $v; 
@@ -107,5 +103,19 @@ class SagaController extends Controller
         }
 
         return $responses;
+    }
+
+    private function getAge($request, $age)
+    {
+        $listAges = $request->input('age_of_death');
+        $ages = isset($listAges[$age]) ? $listAges[$age] : 0;
+        return ($ages <= 0 || !is_numeric($ages)) ? -1 : $ages;
+    }
+
+    private function getYear($request, $year)
+    {
+        $listYears = $request->input('year_of_death');
+        $years = isset($listYears[$year]) ? $listYears[$year] : 0;
+        return ($years <= 0 || !is_numeric($years)) ? -1 : $years;
     }
 }
